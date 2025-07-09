@@ -7,6 +7,7 @@ from datetime import date
 
 auth_bp = Blueprint('auth_bp', __name__)
 
+# 🔹 Registrar un nuevo usuario
 @auth_bp.route('/register', methods=['POST'])
 def register():
     data = request.json
@@ -42,6 +43,7 @@ def register():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
+# 🔹 Iniciar sesión
 @auth_bp.route('/login', methods=['POST'])
 def login():
     try:
@@ -66,7 +68,7 @@ def login():
                 SELECT 1 
                 FROM usuario_pivot_app_usuario p 
                 WHERE p.id_usuario = u.id 
-                AND p.id_app = 2
+                AND p.id_app = 2 -- Acá se debe cambiar por el id de la app
             )
         """
         cursor.execute(sql, (usuario,))
@@ -103,6 +105,7 @@ def login():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
+# 🔹 Refrescar el token
 @auth_bp.route('/refresh', methods=['POST'])
 @jwt_required(refresh=True)
 def refresh():
@@ -157,6 +160,7 @@ def refresh():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
+# 🔹 Cambiar la clave del usuario
 @auth_bp.route('/cambiar-clave', methods=['POST'])
 @jwt_required()
 def cambiar_clave():
@@ -198,6 +202,7 @@ def cambiar_clave():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
+# 🔹 Cambiar la sucursal activa del usuario logueado
 @auth_bp.route('/cambiar-sucursal', methods=['POST'])
 @jwt_required()
 def cambiar_sucursal():

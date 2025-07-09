@@ -32,37 +32,20 @@ def create_app():
     jwt = JWTManager(app)
 
     # Registrar los blueprints
-    from blueprints.usuarios import usuarios_bp
-    from blueprints.actividades import actividades_bp
-    from blueprints.rendimientos import rendimientos_bp
     from blueprints.auth import auth_bp
     from blueprints.opciones import opciones_bp
-    from blueprints.trabajadores import trabajadores_bp
-    from blueprints.contratistas import contratistas_bp
-    from blueprints.tarjas import tarjas_bp
-    from blueprints.colaboradores import colaboradores_bp
-    from blueprints.permisos import permisos_bp
-    from blueprints.rendimientopropio import rendimientopropio_bp
+    from blueprints.usuarios import usuarios_bp
 
     
     # Registrar blueprints
-    app.register_blueprint(actividades_bp, url_prefix='/api/actividades')
-    app.register_blueprint(rendimientos_bp, url_prefix='/api/rendimientos')
-    app.register_blueprint(usuarios_bp, url_prefix='/api/usuarios')
-    app.register_blueprint(contratistas_bp, url_prefix='/api/contratistas')
-    app.register_blueprint(trabajadores_bp, url_prefix='/api/trabajadores')
     app.register_blueprint(opciones_bp, url_prefix="/api/opciones")
     app.register_blueprint(auth_bp, url_prefix="/api/auth")
-    app.register_blueprint(tarjas_bp, url_prefix="/api/tarjas")
-    app.register_blueprint(colaboradores_bp, url_prefix='/api/colaboradores')
-    app.register_blueprint(permisos_bp, url_prefix='/api/permisos')
-    app.register_blueprint(rendimientopropio_bp, url_prefix='/api/rendimientopropio')
-    
+    app.register_blueprint(usuarios_bp, url_prefix="/api/usuarios")
     # Crear un nuevo blueprint para las rutas raíz
     root_bp = Blueprint('root_bp', __name__)
     
     # Importar y registrar las rutas raíz
-    from blueprints.opciones import obtener_sucursales
+    from blueprints.usuarios import obtener_sucursales
     root_bp.add_url_rule('/sucursales/', 'obtener_sucursales', obtener_sucursales, methods=['GET', 'OPTIONS'])
     
     # Registrar el blueprint raíz
