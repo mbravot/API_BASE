@@ -97,7 +97,6 @@ gunicorn -w 4 -b 0.0.0.0:5000 app:app
 
 | Método | Endpoint | Descripción |
 |--------|----------|-------------|
-| POST | `/register` | Registrar nuevo usuario |
 | POST | `/login` | Iniciar sesión |
 | POST | `/refresh` | Refrescar token |
 | POST | `/cambiar-clave` | Cambiar contraseña |
@@ -145,6 +144,19 @@ curl -X POST http://localhost:5000/api/auth/login \
     "usuario": "usuario_ejemplo",
     "clave": "password123"
   }'
+```
+
+**Respuesta:**
+```json
+{
+  "access_token": "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9...",
+  "usuario": "usuario_ejemplo",
+  "nombre": "Juan",
+  "id_sucursal": 1,
+  "sucursal_nombre": "Sucursal Principal",
+  "id_rol": 3,
+  "id_perfil": 1
+}
 ```
 
 ## 📊 Estructura de la Base de Datos
@@ -200,22 +212,6 @@ python -m pytest tests/
 ```
 
 ## 📝 Ejemplos de Uso
-
-### Registrar un nuevo usuario
-
-```bash
-curl -X POST http://localhost:5000/api/auth/register \
-  -H "Content-Type: application/json" \
-  -d '{
-    "usuario": "nuevo_usuario",
-    "clave": "password123",
-    "nombre": "Juan",
-    "apellido_paterno": "Pérez",
-    "apellido_materno": "García",
-    "correo": "juan.perez@ejemplo.com",
-    "id_sucursalactiva": 1
-  }'
-```
 
 ### Obtener información del usuario
 
