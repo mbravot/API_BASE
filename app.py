@@ -3,6 +3,12 @@ from flask_jwt_extended import JWTManager
 from config import Config
 from flask_cors import CORS
 from datetime import timedelta
+import logging
+import os
+
+# Configurar logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 
 # Crear la aplicación Flask
@@ -47,6 +53,47 @@ def create_app():
     # Importar y registrar las rutas raíz
     from blueprints.usuarios import obtener_sucursales
     root_bp.add_url_rule('/sucursales/', 'obtener_sucursales', obtener_sucursales, methods=['GET', 'OPTIONS'])
+
+    # Endpoint de prueba para verificar conexión a BD
+    @root_bp.route('/test-db', methods=['GET'])
+    def test_database():
+        try:
+            logger.info("🔍 Iniciando prueba de conexión a BD...")
+            from utils.db import get_db_connection
+            logger.info(f"📊 Configuración: DATABASE_URL={getattr(Config, 'DATABASE_URL', 'No definido')}")
+            
+            conn = get_db_connection()
+            logger.info("✅ Conexión establecida")
+            
+            cursor = conn.cursor()
+            cursor.execute("SELECT VERSION()")
+            version = cursor.fetchone()
+            logger.info(f"📊 MySQL Version: {version[0]}")
+            
+            cursor.close()
+            conn.close()
+            logger.info("✅ Prueba completada exitosamente")
+            
+            return {"status": "success", "message": "Conexión exitosa", "mysql_version": version[0]}, 200
+        except Exception as e:
+            logger.error(f"❌ Error en prueba de BD: {str(e)}")
+            return {"status": "error", "message": str(e)}, 500
+    
+    # Endpoint de configuración para debug
+    @root_bp.route('/config', methods=['GET'])
+    def show_config():
+        try:
+            config_info = {
+                "DATABASE_URL": getattr(Config, 'DATABASE_URL', 'No definido'),
+                "DB_HOST": getattr(Config, 'DB_HOST', 'No definido'),
+                "DB_USER": getattr(Config, 'DB_USER', 'No definido'),
+                "DB_NAME": getattr(Config, 'DB_NAME', 'No definido'),
+                "K_SERVICE": os.getenv('K_SERVICE', 'No definido'),
+                "FLASK_ENV": os.getenv('FLASK_ENV', 'No definido')
+            }
+            return {"status": "success", "config": config_info}, 200
+        except Exception as e:
+            return {"status": "error", "message": str(e)}, 500
     
     # Registrar el blueprint raíz
     app.register_blueprint(root_bp, url_prefix="/api")

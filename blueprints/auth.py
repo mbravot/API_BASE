@@ -4,6 +4,10 @@ from config import Config
 from utils.db import get_db_connection
 from flask_jwt_extended import create_access_token, jwt_required, get_jwt_identity, create_refresh_token
 from datetime import date
+import logging
+
+# Configurar logging
+logger = logging.getLogger(__name__)
 
 auth_bp = Blueprint('auth_bp', __name__)
 
@@ -14,13 +18,16 @@ def register():
     correo = data.get('correo')
     clave = data.get('clave')
     usuario = data.get('usuario')
+    nombre = data.get('nombre')
+    apellido_paterno = data.get('apellido_paterno')
+    apellido_materno = data.get('apellido_materno')
     id_sucursalactiva = data.get('id_sucursalactiva')
     id_estado = data.get('id_estado', 1)  # Por defecto activo
     id_rol = data.get('id_rol', 3)  # Por defecto usuario común
     id_perfil = data.get('id_perfil', 1)  # Por defecto perfil 1
 
-    if not correo or not clave or not usuario or not id_sucursalactiva:
-        return jsonify({"error": "Correo, clave, usuario y sucursal son requeridos"}), 400
+    if not correo or not clave or not usuario or not nombre or not apellido_paterno or not id_sucursalactiva:
+        return jsonify({"error": "Correo, clave, usuario, nombre, apellido paterno y sucursal son requeridos"}), 400
 
     # Generar hash de la contraseña
     salt = bcrypt.gensalt()
@@ -31,9 +38,9 @@ def register():
         cursor = conn.cursor()
         cursor.execute(
             """INSERT INTO general_dim_usuario 
-               (id, usuario, correo, clave, id_sucursalactiva, id_estado, id_rol, id_perfil, fecha_creacion) 
-               VALUES (UUID(), %s, %s, %s, %s, %s, %s, %s, %s)""",
-            (usuario, correo, clave_encriptada.decode('utf-8'), id_sucursalactiva, 
+               (id, usuario, nombre, apellido_paterno, apellido_materno, correo, clave, id_sucursalactiva, id_estado, id_rol, id_perfil, fecha_creacion) 
+               VALUES (UUID(), %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)""",
+            (usuario, nombre, apellido_paterno, apellido_materno, correo, clave_encriptada.decode('utf-8'), id_sucursalactiva, 
              id_estado, id_rol, id_perfil, date.today())
         )
         conn.commit()
@@ -255,6 +262,97 @@ def cambiar_sucursal():
             "id_sucursal": nueva_sucursal_id,
             "sucursal_nombre": sucursal['nombre'] if sucursal else None
         }), 200
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+# 🔹 Obtener información del usuario logueado
+@auth_bp.route('/me', methods=['GET'])
+@jwt_required()
+def obtener_usuario_actual():
+    try:
+        usuario_id = get_jwt_identity()
+        conn = get_db_connection()
+        cursor = conn.cursor(dictionary=True)
+
+        cursor.execute("""
+            SELECT u.id, u.usuario, u.nombre, u.apellido_paterno, u.apellido_materno, 
+                   u.correo, u.id_sucursalactiva, u.id_estado, u.id_rol, u.id_perfil, 
+                   u.fecha_creacion, s.nombre as sucursal_nombre
+            FROM general_dim_usuario u
+            LEFT JOIN general_dim_sucursal s ON u.id_sucursalactiva = s.id
+            WHERE u.id = %s
+        """, (usuario_id,))
+        
+        usuario = cursor.fetchone()
+        cursor.close()
+        conn.close()
+
+        if not usuario:
+            return jsonify({"error": "Usuario no encontrado"}), 404
+
+        return jsonify(usuario), 200
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+# 🔹 Actualizar información del usuario logueado
+@auth_bp.route('/me', methods=['PUT'])
+@jwt_required()
+def actualizar_usuario_actual():
+    try:
+        usuario_id = get_jwt_identity()
+        data = request.get_json()
+        
+        # Campos que se pueden actualizar
+        nombre = data.get('nombre')
+        apellido_paterno = data.get('apellido_paterno')
+        apellido_materno = data.get('apellido_materno')
+        correo = data.get('correo')
+        
+        if not any([nombre, apellido_paterno, apellido_materno, correo]):
+            return jsonify({"error": "Al menos un campo debe ser proporcionado para actualizar"}), 400
+
+        conn = get_db_connection()
+        cursor = conn.cursor(dictionary=True)
+
+        # Construir la consulta dinámicamente
+        campos_actualizar = []
+        valores = []
+        
+        if nombre is not None:
+            campos_actualizar.append("nombre = %s")
+            valores.append(nombre)
+        if apellido_paterno is not None:
+            campos_actualizar.append("apellido_paterno = %s")
+            valores.append(apellido_paterno)
+        if apellido_materno is not None:
+            campos_actualizar.append("apellido_materno = %s")
+            valores.append(apellido_materno)
+        if correo is not None:
+            campos_actualizar.append("correo = %s")
+            valores.append(correo)
+        
+        valores.append(usuario_id)
+        
+        sql = f"""
+            UPDATE general_dim_usuario 
+            SET {', '.join(campos_actualizar)}
+            WHERE id = %s
+        """
+        
+        cursor.execute(sql, valores)
+        conn.commit()
+        
+        if cursor.rowcount == 0:
+            cursor.close()
+            conn.close()
+            return jsonify({"error": "Usuario no encontrado"}), 404
+
+        cursor.close()
+        conn.close()
+
+        return jsonify({"message": "Información del usuario actualizada correctamente"}), 200
 
     except Exception as e:
         return jsonify({"error": str(e)}), 500
